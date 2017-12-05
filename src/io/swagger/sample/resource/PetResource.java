@@ -1,0 +1,423 @@
+/**
+ *  Copyright 2015 SmartBear Software
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package io.swagger.sample.resource;
+
+import io.swagger.oas.annotations.ExternalDocumentation;
+import io.swagger.oas.annotations.OpenAPIDefinition;
+import io.swagger.oas.annotations.Operation;
+import io.swagger.oas.annotations.Parameter;
+import io.swagger.oas.annotations.callbacks.Callback;
+import io.swagger.oas.annotations.info.Info;
+import io.swagger.oas.annotations.info.License;
+import io.swagger.oas.annotations.info.Contact;
+import io.swagger.oas.annotations.media.Content;
+import io.swagger.oas.annotations.media.Schema;
+import io.swagger.oas.annotations.parameters.RequestBody;
+import io.swagger.oas.annotations.media.ExampleObject;
+import io.swagger.oas.annotations.responses.ApiResponse;
+
+import io.swagger.sample.data.PetData;
+import io.swagger.sample.model.Pet;
+import io.swagger.sample.exception.NotFoundException;
+
+import java.io.*;
+
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.*;
+
+@Path("/pet")
+@Schema(
+		name = "Pet Store App",
+		description = "Operations about pets")
+@Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+@OpenAPIDefinition(
+		info = @Info(
+				title = "Pets Operations",
+				version = "2.0",
+				description = "Operations about pets",
+				license = @License(
+						name = "Apache 2.0", 
+						url = "http://www.apache.org/licenses/LICENSE-2.0.html"),
+				contact=@Contact(
+						email="support@petstoreapp.com", 
+						name = "PetStore App Support")
+		),
+		externalDocs = @ExternalDocumentation(
+				description = "More information about the pet store app",
+				url = "http://petstoreapp.com/info"
+				)
+)
+public class PetResource {
+	
+  static PetData petData = new PetData();
+
+  @GET
+  @Path("/{petId}")
+  @Operation(
+		  method = "GET",
+		  summary = "Find pet by ID",
+		  description = "Returns a pet when ID is less than or equal to 10.",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid ID supplied",
+						  content = @Content(
+								  mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "404",
+						  description = "Pet not found",
+						  content = @Content(
+								  mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = Pet.class))	
+			      )
+		  }
+  )
+   public Response getPetById(
+		   @Parameter(
+				   name = "petId",
+				   description = "ID of pet that needs to be fetched",
+				   required = true,
+				   schema = @Schema(
+						   implementation = Long.class, 
+						   maximum = "10", 
+						   minimum = "1")) 
+		   @PathParam("petId") Long petId)
+      throws NotFoundException {
+    Pet pet = petData.getPetById(petId);
+    if (pet != null) {
+      return Response.ok().entity(pet).build();
+    } else {
+      throw new NotFoundException(404, "Pet not found");
+    }
+  }
+
+  @GET
+  @Path("/{petId}/download")
+  @Operation(
+		  method = "GET",
+		  summary = "Find pet by ID and download it", 
+		  description = "Returns a pet when ID is less than or equal to 10.",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid ID supplied",
+						  content = @Content(mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "404",
+						  description = "Pet not found",
+						  content = @Content(mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = Pet.class)
+						  )
+				 )
+		  }
+  )
+  public Response downloadFile(
+      @Parameter(
+    		  name = "petId",
+    		  description = "ID of pet that needs to be fetched",
+    		  required = true,
+    		  schema = @Schema(
+    				  implementation = Long.class, 
+    				  maximum = "10", 
+    				  minimum = "1")
+      ) @PathParam("petId") Long petId)
+      throws NotFoundException {
+      StreamingOutput stream = new StreamingOutput() {
+      @Override
+      public void write(OutputStream output) throws IOException {
+        try {
+          // TODO: write file content to output;
+          output.write("hello, world".getBytes());
+        } catch (Exception e) {
+           e.printStackTrace();
+        }
+      }
+    };
+
+    return Response.ok(stream, "application/force-download")
+            .header("Content-Disposition", "attachment; filename = foo.bar")
+            .build();
+  }
+
+  @DELETE
+  @Path("/{petId}")
+  @Operation(
+		  method = "DELETE",
+		  summary = "Deletes a pet by ID",
+		  description = "Returns a pet when ID is less than or equal to 10.",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid ID supplied"
+				  ),
+				  @ApiResponse(
+						  responseCode = "404",
+						  description = "Pet not found"
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "Pet successfully deleted"
+						  )
+		  }
+  )
+  public Response deletePet(
+	   		  @Parameter(
+					  name = "apiKey",
+					  description = "authentication key to access this method",
+					  schema = @Schema(type = "String", implementation = String.class)) 
+	   		  @HeaderParam("api_key") String apiKey,
+			  @Parameter(
+					  name = "petId",
+		    		  description = "ID of pet that needs to be fetched",
+		    		  required = true,
+		    		  schema = @Schema(
+		    				  implementation = Long.class, 
+		    				  maximum = "10", 
+		    				  minimum = "1")) 
+	   		  @PathParam("petId") Long petId) {
+      if (petData.deletePet(petId)) {
+        return Response.ok().build();
+      } else {
+        return Response.status(Response.Status.NOT_FOUND).build();
+      }
+  }
+
+  @POST
+  @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Operation(
+		  method = "POST",
+		  summary = "Add pet to store",
+		  description = "Add a new pet to the store",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid input",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = ApiResponse.class))
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = Pet.class)))
+		  },
+		  requestBody = @RequestBody(
+				  content = @Content(
+						  mediaType = "application/json",
+						  schema = @Schema(implementation = Pet.class)),
+				  required = true,
+				  description = "example of a new pet to add"
+				  )
+  )
+  public Response addPet(
+		  @Parameter(
+	    		  name ="addPet",
+	    		  description = "Pet to add",
+	    		  required = true,
+	    		  schema = @Schema(implementation = Pet.class)) Pet pet) {
+    Pet updatedPet = petData.addPet(pet);
+    return Response.ok().entity(updatedPet).build();
+  }
+
+  @PUT
+  @Consumes({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
+  @Operation(
+		  method = "PUT",
+		  summary = "Update an existing pet",
+		  description = "Update an existing pet with the given new attributes",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid ID supplied",
+						  content = @Content(mediaType = "application/json")
+				  ),
+				  @ApiResponse(
+						  responseCode = "404",
+						  description = "Pet not found",
+						  content = @Content(mediaType = "application/json")
+				  ),
+				  @ApiResponse(
+						  responseCode = "405",
+						  description = "Validation exception",
+						  content = @Content(mediaType = "application/json")
+			      ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = Pet.class)))
+		  })
+   public Response updatePet(
+      @Parameter(
+    		  name ="petAttribute",
+    		  description = "Attribute to update existing pet record",
+    		  required = true,
+    		  schema = @Schema(implementation = Pet.class)) Pet pet) {
+    Pet updatedPet = petData.addPet(pet);
+    return Response.ok().entity(updatedPet).build();
+  }
+
+  @GET
+  @Path("/findByStatus")
+  @Operation(
+		  
+		  method = "GET",
+		  summary = "Finds Pets by status",
+		  description = "Find all the Pets with the given status. Multiple status values can be provided with comma seperated strings",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid status value",
+						  content = @Content(mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(type = "list", implementation = Pet.class))	
+					      )
+		  })
+  public Response findPetsByStatus(
+      @Parameter(
+    		  name = "status",
+    		  description = "Status values that need to be considered for filter",
+    		  required = true,
+    		  schema = @Schema(implementation = String.class),
+    		  content = {
+    				  @Content(
+    						  examples = {
+    								  @ExampleObject(
+    										  name = "Available",
+    			    						  value = "available",
+    			    						  summary = "Retrieves all the pets that are available"),
+    								  @ExampleObject(
+    										  name = "Pending",
+    										  value = "pending",
+    										  summary = "Retrieves all the pets that are pending to be sold"),
+    								  @ExampleObject(
+    										  name = "Sold",
+    										  value = "sold",
+    										  summary = "Retrieves all the pets that are sold"),  
+    						  }
+    						  )
+    		  },
+    		  allowEmptyValue = true) String status) {
+    return Response.ok(petData.findPetByStatus(status)).build();
+  }
+
+  @GET
+  @Path("/findByTags")
+  @Callback(operation = 
+  @Operation(
+		  method = "GET",
+		  summary = "Finds Pets by tags",
+		  deprecated = true,
+		  description = "Find Pets by tags. Muliple tags can be provided with comma seperated strings.",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "400",
+						  description = "Invalid tag value",
+						  content = @Content(mediaType = "none")
+				  ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(type = "list", implementation = Pet.class))	
+					      )
+		  }))
+  @Deprecated
+  public Response findPetsByTags(
+    @HeaderParam("api_key") String api_key,
+      @Parameter(
+    		  name = "tags", 
+    		  description = "Tags to filter by", 
+    		  required = true,
+    		  deprecated = true) 
+    @QueryParam("tags") String tags) {
+    return Response.ok(petData.findPetByTags(tags)).build();
+  }
+
+  @POST
+  @Path("/{petId}")
+  @Consumes({MediaType.APPLICATION_FORM_URLENCODED})
+  @Operation(
+		  method = "POST",
+		  summary = "Updates a pet in the store with form data",
+		  responses = {
+				  @ApiResponse(
+						  responseCode = "405",
+						  description = "Validation exception",
+						  content = @Content(mediaType = "none")
+			      ),
+				  @ApiResponse(
+						  responseCode = "200",
+						  description = "success",
+						  content = @Content(
+								  mediaType = "application/json",
+								  schema = @Schema(implementation = Pet.class)))
+		  })
+  public Response updatePetWithForm (
+   @Parameter(
+		   name = "petId", 
+		   description = "ID of pet that needs to be updated", 
+		   required = true) 
+   @PathParam("petId") Long petId,
+   @Parameter(
+		   name = "name", 
+		   description = "Updated name of the pet",
+		   in = "query") 
+   @FormParam("name") String name,
+   @Parameter(
+		   name = "status", 
+		   description = "Updated status of the pet",
+		   in = "query") 
+   @FormParam("status") String status) {
+    Pet pet = petData.getPetById(petId);
+    if(pet != null) {
+      if(name != null && !"".equals(name))
+        pet.setName(name);
+      if(status != null && !"".equals(status))
+        pet.setStatus(status);
+      petData.addPet(pet);
+      return Response.ok().build();
+    }
+    else
+      return Response.status(404).build();
+  }
+}
